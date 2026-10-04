@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Своя Игра — Литература 7 класс</title>
+    <style>
+        :root {
+            --blue-bg: #000080;
+            --gold-text: #ffd700;
+            --white-text: #ffffff;
+            --cell-border: #0000d0;
+            --btn-hover: #0000b3;
+            --correct-color: #28a745;
+            --wrong-color: #dc3545;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-user-select: none;
+            user-select: none;
+            font-family: 'Arial Black', Impact, sans-serif;
+        }
+
+        body {
+            background-color: #000;
+            color: var(--white-text);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- Экран старта --- */
+        #start-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, #00249c 0%, #000030 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+            padding: 20px;
+        }
+        #start-screen h1 {
+            font-size: clamp(3rem, 10vw, 5rem);
+            color: var(--gold-text);
+            text-shadow: 4px 4px 0px #000;
+            letter-spacing: 3px;
+            margin-bottom: 15px;
+        }
+        .btn-main {
+            background: linear-gradient(180deg, #ffd700 0%, #ff8c00 100%);
+            color: #000;
+            border: 3px solid #fff;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 10px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
+        }
+        .btn-main:active { transform: scale(0.95); }
+
+        /* --- Игровое поле (ГЛАВНОЕ ИЗМЕНЕНИЕ) --- */
+        #game-area {
+            flex: 1;
+            display: grid;
+            grid-template-rows: 60px 1fr; /* Строка категорий + сетка вопросов */
+            height: calc(100vh - 70px); /* Минус нижняя панель */
+            width: 100%;
+        }
+
+        #categories-header {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            padding: 5px;
+            background: #000;
+            border-bottom: 3px solid var(--gold-text);
+        }
+
+        .category-label {
+            background: #000066;
+            color: var(--gold-text);
+            padding: 8px;
+            text-align: left;
+            font-size: 1rem;
+            border-radius: 4px;
+            border: 1px solid var(--cell-border);
+            display: flex;
+            align-items: center;
+            padding-left: 12px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            gap: 4px;
+            padding: 4px;
+            background: #000;
+        }
+
+        .card {
+            background: linear-gradient(135deg, #0000a0 0%, #000050 100%);
+            border: 2px solid var(--cell-border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            color: var(--gold-text);
+            cursor: pointer;
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.2s;
+        }
+        .card:hover:not(.opened):not(.cat-in-bag) {
+            transform: scale(1.05);
+            background: #0000ff;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+        .card.cat-in-bag {
+            border: 3px dashed var(--gold-text);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 30px rgba(255, 215, 0, 1); }
+            100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        }
+        .card.opened {
+            opacity: 0.3;
+            cursor: default;
+            filter: grayscale(100%);
+        }
+        .card.correct {
+            background: var(--correct-color);
+            border-color: var(--correct-color);
+            color: white;
+        }
+        .card.wrong {
+            background: var(--wrong-color);
+            border-color: var(--wrong-color);
+            color: white;
+        }
+
+        /* --- Нижняя панель --- */
+        #bottom-bar {
+            height: 70px;
+            background: #111;
+            border-top: 3px solid var(--gold-text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 30px;
+            font-size: 1.5rem;
+        }
+        #score-display { color: var(--gold-text); font-weight: bold; }
+
+        /* --- Модальные окна --- */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99;
+            padding: 20px;
+        }
+        .overlay.active { display: flex; }
+        
+        .modal-content {
+            background: #000044;
+            border: 3px solid var(--gold-text);
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-title {
+            color: var(--gold-text);
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+        #question-text {
+            font-size: 1.6rem;
+            line-height: 1.4;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+
+        /* Таймер */
+        .timer-container {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 5px solid #333;
+            position: relative;
+            margin: 0 auto 30px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .timer-ring {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 5px solid transparent;
+            border-left-color: var(--gold-text);
+            position: absolute;
+            top: 0; left: 0;
+            transform-origin: center;
+            transition: border-left-color 0.3s, transform 0.1s;
+        }
+        .timer-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--gold-text);
+            z-index: 2;
+        }
+        .timer-warning { border-left-color: orange !important; animation: pulse-short 1s infinite; }
+        .timer-danger { border-left-color: red !important; animation: shake-timer 0.5s infinite; }
+        @keyframes pulse-short { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes shake-timer { 0% { transform: translate(0); } 25% { transform: translate(-2px, 0); } 50% { transform: translate(2px, 0); } 75% { transform: translate(-2px, 0); } 100% { transform: translate(0); } }
+
+        /* Ответы */
+        .answers-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .answer-btn {
+            background: #000066;
+            border: 2px solid var(--gold-text);
+            color: white;
+            padding: 15px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .answer-btn:hover { background: #0000aa; }
+        .answer-btn.disabled { cursor: default; opacity: 0.7; }
+
+        /* Результаты ответа */
+        .result-block {
+            margin-top: 25px;
+            min-height: 60px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: none; /* Скрыто по умолчанию */
+        }
+        .result-correct { color: var(--correct-color); }
+        .result-wrong { color: var(--wrong-color); }
+        .result-timeup { color: orange; }
+
+        .final-answer-hint {
+            margin-top: 15px;
+            font-style: italic;
+            color: #aaa;
+            display: none;
+        }
+
+        /* Экран завершения */
+        #final-screen .modal-content { max-width: 600px; }
+        #final-score-text { font-size: 2rem; color: var(--gold-text); margin: 20px 0; }
+
+        @media (max-width: 768px) {
+            .answers-grid { grid-template-columns: 1fr; }
+            .timer-container { width: 80px; height: 80px; }
+            .timer-value { font-size: 2rem; }
+            #question-text { font-size: 1.2rem; }
+            .category-label { font-size: 0.8rem; padding: 5px; }
+            .card { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Экран старта -->
+    <div id="start-screen">
+        <h1>СВОЯ ИГРА</h1>
+        <p style="color: #ccc; margin-bottom: 20px;">Русская литература. 7 класс</p>
+        <button class="btn-main" onclick="startGame()">НАЧАТЬ ИГРУ</button>
+    </div>
+
+    <!-- Основная игровая зона -->
+    <div id="game-area">
+        <!-- Строка категорий (ВСЕГДА ВИДНА) -->
+        <div id="categories-header"></div>
+        <!-- Сетка карточек -->
+        <div id="board"></div>
+    </div>
+
+    <!-- Нижняя панель счета -->
+    <div id="bottom-bar">
+        <div>ИГРОК: 1</div>
+        <div id="score-display">ОЧКИ: 0</div>
+    </div>
+
+    <!-- Модальное окно вопроса -->
+    <div id="modal" class="overlay">
+        <div class="modal-content">
+            <div class="modal-title" id="modal-title">Вопрос</div>
+            
+            <!-- Таймер -->
+            <div class="timer-container">
+                <div class="timer-ring" id="timer-ring"></div>
+                <div class="timer-value" id="timer-value">25</div>
+            </div>
+
+            <div id="question-text">Текст вопроса...</div>
+
+            <!-- Варианты ответов -->
+            <div class="answers-grid" id="answers-container"></div>
+
+            <!-- Блок результата (появляется после выбора) -->
+            <div class="result-block" id="result-message"></div>
+            <div class="final-answer-hint" id="correct-answer-text"></div>
+
+            <!-- Кнопка закрытия (появляется только при таймауте или после проверки) -->
+            <button class="btn-main" id="close-modal-btn" style="display:none; margin-top:20px;" onclick="closeModalAndCheck()">Продолжить игру</button>
+        </div>
+    </div>
+
+    <!-- Экран финала -->
+    <div id="final-screen" class="overlay">
+        <div class="modal-content">
+            <h2 class="modal-title">ИГРА ОКОНЧЕНА</h2>
+            <div id="final-score-text" style="font-size: 2rem; margin: 20px 0;">Вы набрали: 0 очков</div>
+            <button class="btn-main" onclick="location.reload()">СЫГРАТЬ СНОВА</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Звуки ---
+        const sounds = {
+            intro:   new Audio('intro.mp3'),
+            select:  new Audio('select.mp3'),
+            cat:     new Audio('cat.mp3'),
+            wrong:   new Audio('wrong.mp3'),
+            correct: new Audio('correct.mp3'),
+            finish:  new Audio('finish.mp3')
+        };
+
+        let soundsReady = true;
+        Object.keys(sounds).forEach(key => {
+            sounds[key].addEventListener('error', () => {
+                soundsReady = false;
+                console.log(`Звук ${key}.mp3 не найден`);
+            });
+        });
+
+        function play(soundName) {
+            const s = sounds[soundName];
+            if (!s) return;
+            try {
+                s.currentTime = 0;
+                s.play().catch(() => {});
+            } catch (e) {}
+        }
+
+        // --- Данные ---
+        const categories = ["Пушкин", "Гоголь", "Лермонтов", "Толстой", "Разные авторы"];
+        const points = [100, 200, 300, 400, 500];
+
+        const questions = {
+            "Пушкин": [
+                { q: "Как зовут станционного смотрителя в повести Пушкина?", a: ["Самсон Вырин", "Акакий Акакиевич", "Максим Максимыч", "Пётр Гринёв"], correct: 0 },
+        { q: "Кто главный герой «Капитанской дочки»?", a: ["Пётр Гринёв", "Владимир Дубровский", "Евгений Онегин", "Григорий Печорин"], correct: 0 },
+        { q: "В каком городе происходит действие «Медного всадника»?", a: ["Санкт-Петербург", "Москва", "Тверь", "Казань"], correct: 0 },
+        { q: "Какое произведение начинается словами: «Мой дядя самых честных правил…»?", a: ["«Евгений Онегин»", "«Капитанская дочка»", "«Борис Годунов»", "«Руслан и Людмила»"], correct: 0 },
+        { q: "Какой жанр у «Станционного смотрителя»?", a: ["Повесть", "Роман", "Рассказ", "Драма"], correct: 0 }
+      ],
+      "Гоголь": [
+        { q: "Как зовут главного героя «Шинели»?", a: ["Акакий Акакиевич", "Хлестаков", "Чичиков", "Плюшкин"], correct: 0 },
+        { q: "Что скупал Чичиков в «Мёртвых душах»?", a: ["Мёртвые души", "Землю", "Дома", "Драгоценности"], correct: 0 },
+        { q: "Какая пьеса Гоголя начинается с фразы: «Я пригласил вас, господа…»?", a: ["«Ревизор»", "«Женитьба»", "«Игроки»", "«Шинель»"], correct: 0 },
+        { q: "Кого Тарас Бульба называет «мазунчик»?", a: ["Андрия", "Остапа", "Себя", "Поляка"], correct: 0 },
+        { q: "Какой город часто встречается у Гоголя как отдельный персонаж?", a: ["Петербург", "Киев", "Москва", "Нижний Новгород"], correct: 0 }
+      ],
+      "Лермонтов": [
+        { q: "Как называется главное прозаическое произведение Лермонтова?", a: ["«Герой нашего времени»", "«Мцыри»", "«Демон»", "«Бородино»"], correct: 0 },
+        { q: "Какой герой Лермонтова стал символом «лишнего человека»?", a: ["Печорин", "Демон", "Мцыри", "Максим Максимыч"], correct: 0 },
+        { q: "Где происходит действие «Героя нашего времени»?", a: ["Кавказ", "Петербург", "Москва", "Сибирь"], correct: 0 },
+        { q: "О ком идёт речь в «Песне про купца Калашникова»?", a: ["О купце Калашникове", "О Петре I", "О Пугачёве", "О Тарасе Бульбе"], correct: 0 },
+        { q: "Кому посвящено стихотворение «Смерть поэта»?", a: ["А. С. Пушкину", "В. А. Жуковскому", "Е. А. Баратынскому", "Ф. И. Тютчеву"], correct: 0 }
+      ],
+      "Толстой": [
+        { q: "Какой рассказ Толстого изучают в 7 классе и связан с Кавказом?", a: ["«Кавказский пленник»", "«После бала»", "«Севастопольские рассказы»", "«Хаджи-Мурат»"], correct: 0 },
+        { q: "Кто из героев «Войны и мира» переживает прозрение после ранения под Аустерлицем?", a: ["Андрей Болконский", "Пьер Безухов", "Николай Ростов", "Наташа Ростова"], correct: 0 },
+        { q: "Какой исторический период охватывает «Война и мир»?", a: ["Наполеоновские войны", "Отечественная война 1812 года", "Крымская война", "Революция 1905 года"], correct: 1 },
+        { q: "Как зовут главного героя рассказа «После бала»?", a: ["Иван Васильевич", "Пётр Андреевич", "Андрей Николаевич", "Сергей Иванович"], correct: 0 },
+        { q: "Что становится поворотным моментом в жизни героя «После бала»?", a: ["Увиденная экзекуция солдата", "Разговор с генералом", "Письмо от любимой", "Проигрыш в карты"], correct: 0 }
+      ],
+      "Разные авторы": [
+        { q: "Кто автор стихотворения «Парус»?", a: ["М. Ю. Лермонтов", "А. С. Пушкин", "Ф. И. Тютчев", "Н. А. Некрасов"], correct: 0 },
+        { q: "Кто написал «Муму»?", a: ["И. С. Тургенев", "Н. В. Гоголь", "Л. Н. Толстой", "А. П. Чехов"], correct: 0 },
+        { q: "Какой жанр у «Муму»?", a: ["Рассказ", "Повесть", "Роман", "Очерк"], correct: 0 },
+        { q: "Кто известен сатирическими сказками и обличением пороков общества?", a: ["М. Е. Салтыков-Щедрин", "Ф. М. Достоевский", "И. А. Гончаров", "А. Н. Островский"], correct: 0 },
+        { q: "Какой образ у Гоголя — символ пустоты и деградации?", a: ["Плюшкин", "Чацкий", "Обломов", "Раскольников"], correct: 0 }
+      ]
+    };
+
+    // --- Игровая логика ---
+    let score = 0;
+    let openedCount = 0;
+    const totalCards = 25;
+    let catInBagIndex = null;
+    let timerInterval = null;
+    let timeLeft = 25;
+    let currentPoints = 0;
+    let currentCardEl = null;
+    let answered = false; // флаг: ответил ли игрок (чтобы таймер не сработал дважды)
+
+    function renderCategories() {
+      const header = document.getElementById('categories-header');
+      header.innerHTML = '';
+      categories.forEach(cat => {
+        const el = document.createElement('div');
+        el.className = 'category-label';
+        el.textContent = cat;
+        header.appendChild(el);
+      });
+    }
+
+    function initBoard() {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+      catInBagIndex = Math.floor(Math.random() * totalCards);
+
+      for (let i = 0; i < totalCards; i++) {
+        const col = i % 5;
+        const row = Math.floor(i / 5);
+        const category = categories[col];
+        const pointsValue = points[row];
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.textContent = pointsValue;
+        if (i === catInBagIndex) card.classList.add('cat-in-bag');
+        card.dataset.category = category;
+        card.dataset.row = row;
+        card.onclick = () => openCard(card, i);
+        board.appendChild(card);
+      }
+    }
+
+    function openCard(cardEl, index) {
+      if (cardEl.classList.contains('opened')) return;
+
+      play('select.mp3');
+      cardEl.classList.add('opened');
+      openedCount++;
+      currentCardEl = cardEl;
+      answered = false;
+
+      const category = cardEl.dataset.category;
+      const row = parseInt(cardEl.dataset.row);
+      const pointsValue = points[row];
+      currentPoints = pointsValue;
+
+      // Скрываем блок результата перед новым вопросом
+      document.getElementById('result-message').style.display = 'none';
+      document.getElementById('result-message').className = 'result-block';
+      document.getElementById('correct-answer-text').style.display = 'none';
+      document.getElementById('close-modal-btn').style.display = 'none';
+
+      if (index === catInBagIndex) {
+        play('cat.mp3');
+        const effect = Math.random();
+        let change = 0;
+        let msg = '';
+        if (effect < 0.33) {
+          change = 300;
+          msg = 'Кот в мешке! +300 баллов!';
+        } else {
+          change = score;
+          msg = `Кот в мешке! Удвоение! +${score} баллов.`;
+        }
+        score += change;
+        updateScore();
+        showInfoModal('Кот в мешке', msg);
+        return;
+      }
+
+      const qData = questions[category][row];
+      showQuestionModal(qData, pointsValue, cardEl, category);
+    }
+
+    function showQuestionModal(qData, pts, cardEl, categoryName) {
+      document.getElementById('modal-title').textContent = `${categoryName} — ${pts} баллов`;
+      document.getElementById('question-text').textContent = qData.q;
+      const container = document.getElementById('answers-container');
+      container.innerHTML = '';
+
+      qData.a.forEach((ans, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'answer-btn';
+        btn.textContent = ans;
+        btn.onclick = () => {
+          container.querySelectorAll('.answer-btn').forEach(b => {
+            b.classList.add('disabled');
+            b.disabled = true;
+          });
+          checkAnswer(btn, idx, qData.correct, pts, cardEl);
+        };
+        container.appendChild(btn);
+      });
+
+      // Скрываем таймер для кота в мешке, показываем для обычных вопросов
+      document.querySelector('.timer-container').style.display = 'block';
+
+      document.getElementById('modal').classList.add('active');
+      startTimer(qData, pts, cardEl);
+    }
+
+    function startTimer(qData, pts, cardEl) {
+      timeLeft = 25;
+      const ring = document.getElementById('timer-ring');
+      const valueEl = document.getElementById('timer-value');
+      valueEl.textContent = timeLeft;
+      ring.className = 'timer-ring';
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        valueEl.textContent = timeLeft;
+
+        if (timeLeft <= 10 && timeLeft > 5) {
+          ring.className = 'timer-ring timer-warning';
+        }
+        if (timeLeft <= 5 && timeLeft > 0) {
+          ring.className = 'timer-ring timer-danger';
+        }
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          if (!answered) {
+            handleTimeout(qData, pts, cardEl);
+          }
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function checkAnswer(btnEl, selectedIdx, correctIdx, pts, cardEl) {
+      if (answered) return;
+      answered = true;
+      stopTimer();
+
+      const resultMsg = document.getElementById('result-message');
+      const correctHint = document.getElementById('correct-answer-text');
+      const isCorrect = selectedIdx === correctIdx;
+
+      if (isCorrect) {
+        score += pts;
+        play('correct');
+        btnEl.style.background = '#28a745';
+        btnEl.style.color = '#fff';
+        btnEl.style.borderColor = '#28a745';
+        cardEl.classList.add('correct');
+
+        resultMsg.textContent = `Верно!  +${pts} баллов`;
+        resultMsg.className = 'result-block result-correct';
+        resultMsg.style.display = 'block';
+      } else {
+        // ШТРАФА НЕТ — баллы не вычитаем
+        play('wrong.mp3');
+        btnEl.style.background = '#dc3545';
+        btnEl.style.color = '#fff';
+        btnEl.style.borderColor = '#dc3545';
+        cardEl.classList.add('wrong');
+
+        // Подсвечиваем правильный ответ
+        const allBtns = document.querySelectorAll('.answer-btn');
+        if (allBtns[correctIdx]) {
+          allBtns[correctIdx].style.background = '#28a745';
+          allBtns[correctIdx].style.color = '#fff';
+          allBtns[correctIdx].style.borderColor = '#28a745';
+        }
+
+        resultMsg.textContent = 'Неверно!';
+        resultMsg.className = 'result-block result-wrong';
+        resultMsg.style.display = 'block';
+        correctHint.textContent = `Правильный ответ: ${allBtns[correctIdx] ? allBtns[correctIdx].textContent : ''}`;
+        correctHint.style.display = 'block';
+      }
+
+      updateScore();
+
+      // Показываем кнопку "Продолжить" через 0.5 сек
+      setTimeout(() => {
+        document.getElementById('close-modal-btn').style.display = 'inline-block';
+      }, 500);
+
+      // Автозакрытие через 2.5 сек (если игрок не нажал сам)
+      setTimeout(() => {
+        if (document.getElementById('modal').classList.contains('active')) {
+          closeModalAndCheck();
+        }
+      }, 2500);
+    }
+
+    function handleTimeout(qData, pts, cardEl) {
+      answered = true;
+
+      const resultMsg = document.getElementById('result-message');
+      const correctHint = document.getElementById('correct-answer-text');
+
+      play('wrong.mp3');
+
+      // Подсвечиваем правильный ответ
+      const allBtns = document.querySelectorAll('.answer-btn');
+      if (allBtns[qData.correct]) {
+        allBtns[qData.correct].style.background = '#28a745';
+        allBtns[qData.correct].style.color = '#fff';
+        allBtns[qData.correct].style.borderColor = '#28a745';
+      }
+      allBtns.forEach(b => { b.classList.add('disabled'); b.disabled = true; });
+
+      cardEl.classList.add('wrong');
+
+      resultMsg.textContent = 'Время вышло!';
+      resultMsg.className = 'result-block result-timeup';
+      resultMsg.style.display = 'block';
+      correctHint.textContent = `Правильный ответ: ${allBtns[qData.correct] ? allBtns[qData.correct].textContent : ''}`;
+      correctHint.style.display = 'block';
+
+      // Кнопка "Продолжить"
+      setTimeout(() => {
+        document.getElementById('close-modal-btn').style.display = 'inline-block';
+      }, 500);
+
+      setTimeout(() => {
+        if (document.getElementById('modal').classList.contains('active')) {
+          closeModalAndCheck();
+        }
+      }, 3000);
+    }
+
+    function showInfoModal(title, text) {
+      stopTimer();
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('question-text').textContent = text;
+      document.getElementById('answers-container').innerHTML = '';
+      document.querySelector('.timer-container').style.display = 'none';
+      document.getElementById('result-message').style.display = 'none';
+      document.getElementById('correct-answer-text').style.display = 'none';
+
+      const closeBtn = document.getElementById('close-modal-btn');
+      closeBtn.textContent = 'Продолжить игру';
+      closeBtn.style.display = 'inline-block';
+      closeBtn.onclick = () => {
+        closeModalAndCheck();
+      };
+
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModalAndCheck() {
+      document.getElementById('modal').classList.remove('active');
+      stopTimer();
+      // Возвращаем текст кнопки обратно
+      document.getElementById('close-modal-btn').textContent = 'Продолжить игру';
+      document.getElementById('close-modal-btn').onclick = closeModalAndCheck;
+      checkGameOver();
+    }
+
+    function updateScore() {
+      document.getElementById('score-display').textContent = `ОЧКИ: ${score}`;
+    }
+
+    function checkGameOver() {
+      if (openedCount >= totalCards) {
+        setTimeout(() => {
+          play('finish');
+          document.getElementById('game-area').style.display = 'none';
+          document.getElementById('bottom-bar').style.display = 'none';
+          document.getElementById('final-screen').classList.add('active');
+          document.getElementById('final-score-text').textContent = `Вы набрали: ${score} очков`;
+        }, 500);
+      }
+    }
+
+    function startGame() {
+      score = 0;
+      openedCount = 0;
+      updateScore();
+      document.getElementById('start-screen').style.display = 'none';
+      document.getElementById('game-area').style.display = 'grid';
+      document.getElementById('bottom-bar').style.display = 'flex';
+      document.getElementById('final-screen').classList.remove('active');
+      renderCategories();
+      initBoard();
+      play('intro.mp3');
+    }
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw12.js')
+        .then(reg => console.log('SW зарегистрирован', reg.scope))
+        .catch(err => console.log('Ошибка SW:', err));
+    });
+  }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+

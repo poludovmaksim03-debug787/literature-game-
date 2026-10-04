@@ -354,12 +354,12 @@
     <script>
         // --- Звуки ---
         const sounds = {
-            intro:   new Audio('intro.mp3'),
-            select:  new Audio('select.mp3.mp3'),
-            cat:     new Audio('cat.mp3.mp3'),
-            wrong:   new Audio('wrong.mp3'),
-            correct: new Audio('correct.mp3'),
-            finish:  new Audio('finish.mp3')
+            intro:   new Audio('/intro.mp3'),
+            select:  new Audio('/select.mp3.mp3'),
+            cat:     new Audio('/cat.mp3.mp3'),
+            wrong:   new Audio('/wrong.mp3'),
+            correct: new Audio('/correct.mp3'),
+            finish:  new Audio('/finish.mp3')
         };
 
         let soundsReady = true;

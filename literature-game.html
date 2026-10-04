@@ -355,8 +355,8 @@
         // --- Звуки ---
         const sounds = {
             intro:   new Audio('intro.mp3'),
-            select:  new Audio('select.mp3.mp3'),
-            cat:     new Audio('cat.mp3.mp3'),
+            select:  new Audio('select.mp3'),
+            cat:     new Audio('cat.mp3'),
             wrong:   new Audio('wrong.mp3'),
             correct: new Audio('correct.mp3'),
             finish:  new Audio('finish.mp3')
@@ -468,7 +468,7 @@
     function openCard(cardEl, index) {
       if (cardEl.classList.contains('opened')) return;
 
-      play('select.mp3.mp3');
+      play('select.mp3');
       cardEl.classList.add('opened');
       openedCount++;
       currentCardEl = cardEl;
@@ -486,7 +486,7 @@
       document.getElementById('close-modal-btn').style.display = 'none';
 
       if (index === catInBagIndex) {
-        play('cat.mp3.mp3');
+        play('cat.mp3');
         const effect = Math.random();
         let change = 0;
         let msg = '';
@@ -719,7 +719,7 @@
     }
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw12.js')
+      navigator.serviceWorker.register('/sw12.js')
         .then(reg => console.log('SW зарегистрирован', reg.scope))
         .catch(err => console.log('Ошибка SW:', err));
     });
